@@ -41,7 +41,9 @@ HOSTED_AGENTS: tuple[str, ...] = (
 
 # Data-plane role that includes Microsoft.CognitiveServices/accounts/AIServices/agents/*
 # read + invoke. Project Manager is NOT needed for runtime — only for create_version().
-ROLE_NAME = "Azure AI User"
+# Use the stable role definition ID because the display name changed from
+# "Azure AI User" to "Foundry User" in newer tenants/CLI surfaces.
+ROLE_ID = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
 
 # Latest stable api-version exposing instance_identity.principal_id.
 AGENT_API_VERSION = "2025-11-15-preview"
@@ -160,7 +162,7 @@ def main(agents: Iterable[str] = HOSTED_AGENTS) -> int:
         if not principal_id:
             print(f"  - {agent:30s}  v{version.get('version')}  (no instance identity, skipped)")
             continue
-        is_new = _grant_role(principal_id, account_scope, ROLE_NAME)
+        is_new = _grant_role(principal_id, account_scope, ROLE_ID)
         status = "granted" if is_new else "ok"
         granted += int(is_new)
         print(f"  - {agent:30s}  v{version.get('version'):<3}  {status}")

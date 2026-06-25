@@ -200,6 +200,7 @@ output AI_FOUNDRY_ACCOUNT_NAME string = aiFoundry.outputs.accountName
 output AI_FOUNDRY_PROJECT_NAME string = aiFoundry.outputs.projectName
 output AI_FOUNDRY_ENDPOINT string = aiFoundry.outputs.endpoint
 output AI_FOUNDRY_PROJECT_ENDPOINT string = aiFoundry.outputs.projectEndpoint
+output FOUNDRY_PROJECT_ENDPOINT string = aiFoundry.outputs.projectEndpoint
 output AI_FOUNDRY_PORTAL_URL string = aiFoundry.outputs.portalUrl
 // Required by `azd ai agent` extension (azd deploy of host: azure.ai.agent
 // services) so it can target the Foundry project that owns the agents.

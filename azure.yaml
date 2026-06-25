@@ -246,29 +246,31 @@ hooks:
                 $subId = azd env get-value AZURE_SUBSCRIPTION_ID 2>$null
                 $accountScope = "/subscriptions/$subId/resourceGroups/$rgName/providers/Microsoft.CognitiveServices/accounts/$foundryAccountName"
                 $projectScope = "$accountScope/projects/$foundryProjectName"
-                $existing = az role assignment list --assignee $deployerOid --role "Azure AI User" --scope $projectScope --query "[].id" -o tsv 2>$null
-                az role assignment create --assignee $deployerOid --role "Azure AI User" --scope $accountScope --only-show-errors 2>$null | Out-Null
-                az role assignment create --assignee $deployerOid --role "Azure AI User" --scope $projectScope --only-show-errors 2>$null | Out-Null
+                $foundryUserRoleId = "53ca6127-db72-4b80-b1b0-d745d6d5456d"
+                $foundryProjectManagerRoleId = "eadc314b-1a2d-4efa-be10-5d325db5065e"
+                $existing = az role assignment list --assignee $deployerOid --role $foundryUserRoleId --scope $projectScope --query "[].id" -o tsv 2>$null
+                az role assignment create --assignee $deployerOid --role $foundryUserRoleId --scope $accountScope --only-show-errors 2>$null | Out-Null
+                az role assignment create --assignee $deployerOid --role $foundryUserRoleId --scope $projectScope --only-show-errors 2>$null | Out-Null
                 $roleIsNew = -not $existing
-                Write-Host "    deployer: Azure AI User" -ForegroundColor Gray
+                Write-Host "    deployer: Foundry User" -ForegroundColor Gray
 
                 # Azure AI Project Manager (deployer, project scope) is required by the
                 # refreshed Hosted Agents preview to call create_version() on
                 # HostedAgentDefinition / PromptAgentDefinition. Azure AI User only covers
                 # invoking an existing agent; agent deployment writes need Project Manager.
                 # https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent#required-permissions
-                $existingPM = az role assignment list --assignee $deployerOid --role "Azure AI Project Manager" --scope $projectScope --query "[].id" -o tsv 2>$null
-                az role assignment create --assignee $deployerOid --role "Azure AI Project Manager" --scope $projectScope --only-show-errors 2>$null | Out-Null
+                $existingPM = az role assignment list --assignee $deployerOid --role $foundryProjectManagerRoleId --scope $projectScope --query "[].id" -o tsv 2>$null
+                az role assignment create --assignee $deployerOid --role $foundryProjectManagerRoleId --scope $projectScope --only-show-errors 2>$null | Out-Null
                 if (-not $existingPM) { $roleIsNew = $true }
-                Write-Host "    deployer: Azure AI Project Manager" -ForegroundColor Gray
+                Write-Host "    deployer: Foundry Project Manager" -ForegroundColor Gray
 
-                # Also assign Azure AI User to the Backend ACA managed identity so it can
+                # Also assign Foundry User to the Backend ACA managed identity so it can
                 # call Foundry Hosted Agents at runtime via DefaultAzureCredential.
                 $backendMiOid = az containerapp identity show --name $backendApp --resource-group $rgName --query "principalId" -o tsv 2>$null
                 if ($backendMiOid) {
-                    az role assignment create --assignee-object-id $backendMiOid --assignee-principal-type ServicePrincipal --role "Azure AI User" --scope $accountScope --only-show-errors 2>$null | Out-Null
-                    az role assignment create --assignee-object-id $backendMiOid --assignee-principal-type ServicePrincipal --role "Azure AI User" --scope $projectScope --only-show-errors 2>$null | Out-Null
-                    Write-Host "    backend MI: Azure AI User" -ForegroundColor Gray
+                    az role assignment create --assignee-object-id $backendMiOid --assignee-principal-type ServicePrincipal --role $foundryUserRoleId --scope $accountScope --only-show-errors 2>$null | Out-Null
+                    az role assignment create --assignee-object-id $backendMiOid --assignee-principal-type ServicePrincipal --role $foundryUserRoleId --scope $projectScope --only-show-errors 2>$null | Out-Null
+                    Write-Host "    backend MI: Foundry User" -ForegroundColor Gray
                 } else {
                     Write-Host "    WARN: Could not retrieve backend managed identity" -ForegroundColor Yellow
                 }
@@ -376,30 +378,32 @@ hooks:
                 SUB_ID=$(azd env get-value AZURE_SUBSCRIPTION_ID 2>/dev/null)
                 ACCOUNT_SCOPE="/subscriptions/$SUB_ID/resourceGroups/$RG_NAME/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY_ACCOUNT_NAME"
                 PROJECT_SCOPE="$ACCOUNT_SCOPE/projects/$FOUNDRY_PROJECT_NAME"
-                EXISTING=$(az role assignment list --assignee "$DEPLOYER_OID" --role "Azure AI User" --scope "$PROJECT_SCOPE" --query "[].id" -o tsv 2>/dev/null)
-                az role assignment create --assignee "$DEPLOYER_OID" --role "Azure AI User" --scope "$ACCOUNT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
-                az role assignment create --assignee "$DEPLOYER_OID" --role "Azure AI User" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
+                FOUNDRY_USER_ROLE_ID="53ca6127-db72-4b80-b1b0-d745d6d5456d"
+                FOUNDRY_PROJECT_MANAGER_ROLE_ID="eadc314b-1a2d-4efa-be10-5d325db5065e"
+                EXISTING=$(az role assignment list --assignee "$DEPLOYER_OID" --role "$FOUNDRY_USER_ROLE_ID" --scope "$PROJECT_SCOPE" --query "[].id" -o tsv 2>/dev/null)
+                az role assignment create --assignee "$DEPLOYER_OID" --role "$FOUNDRY_USER_ROLE_ID" --scope "$ACCOUNT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
+                az role assignment create --assignee "$DEPLOYER_OID" --role "$FOUNDRY_USER_ROLE_ID" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
                 ROLE_IS_NEW=false
                 [ -z "$EXISTING" ] && ROLE_IS_NEW=true
-                printf "    deployer: Azure AI User\n"
+                printf "    deployer: Foundry User\n"
 
-                # Azure AI Project Manager (deployer, project scope) is required by the
+                # Foundry Project Manager (deployer, project scope) is required by the
                 # refreshed Hosted Agents preview to call create_version() on
-                # HostedAgentDefinition / PromptAgentDefinition. Azure AI User only covers
+                # HostedAgentDefinition / PromptAgentDefinition. Foundry User only covers
                 # invoking an existing agent; agent deployment writes need Project Manager.
                 # https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent#required-permissions
-                EXISTING_PM=$(az role assignment list --assignee "$DEPLOYER_OID" --role "Azure AI Project Manager" --scope "$PROJECT_SCOPE" --query "[].id" -o tsv 2>/dev/null)
-                az role assignment create --assignee "$DEPLOYER_OID" --role "Azure AI Project Manager" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
+                EXISTING_PM=$(az role assignment list --assignee "$DEPLOYER_OID" --role "$FOUNDRY_PROJECT_MANAGER_ROLE_ID" --scope "$PROJECT_SCOPE" --query "[].id" -o tsv 2>/dev/null)
+                az role assignment create --assignee "$DEPLOYER_OID" --role "$FOUNDRY_PROJECT_MANAGER_ROLE_ID" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
                 [ -z "$EXISTING_PM" ] && ROLE_IS_NEW=true
-                printf "    deployer: Azure AI Project Manager\n"
+                printf "    deployer: Foundry Project Manager\n"
 
-                # Also assign Azure AI User to the Backend ACA managed identity so it can
+                # Also assign Foundry User to the Backend ACA managed identity so it can
                 # call Foundry Hosted Agents at runtime via DefaultAzureCredential.
                 BACKEND_MI_OID=$(az containerapp identity show --name "$BACKEND_APP" --resource-group "$RG_NAME" --query "principalId" -o tsv 2>/dev/null)
                 if [ -n "$BACKEND_MI_OID" ]; then
-                    az role assignment create --assignee-object-id "$BACKEND_MI_OID" --assignee-principal-type ServicePrincipal --role "Azure AI User" --scope "$ACCOUNT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
-                    az role assignment create --assignee-object-id "$BACKEND_MI_OID" --assignee-principal-type ServicePrincipal --role "Azure AI User" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
-                    printf "    backend MI: Azure AI User\n"
+                    az role assignment create --assignee-object-id "$BACKEND_MI_OID" --assignee-principal-type ServicePrincipal --role "$FOUNDRY_USER_ROLE_ID" --scope "$ACCOUNT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
+                    az role assignment create --assignee-object-id "$BACKEND_MI_OID" --assignee-principal-type ServicePrincipal --role "$FOUNDRY_USER_ROLE_ID" --scope "$PROJECT_SCOPE" --only-show-errors > /dev/null 2>/dev/null || true
+                    printf "    backend MI: Foundry User\n"
                 else
                     printf "${Yellow}    WARN: Could not retrieve backend managed identity${NC}\n"
                 fi
