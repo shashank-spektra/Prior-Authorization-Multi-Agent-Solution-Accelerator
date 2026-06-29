@@ -18,6 +18,8 @@ conversation history.
 Migration ref: https://learn.microsoft.com/azure/foundry/agents/how-to/migrate-hosted-agent-preview
 """
 import os
+import sys
+import traceback
 from pathlib import Path
 
 from agent_framework import Agent, SkillsProvider
@@ -37,6 +39,10 @@ load_dotenv(override=True)  # override=True required for Foundry-deployed env va
 
 
 def main() -> None:
+    sys.excepthook = lambda exc_type, exc_value, exc_traceback: traceback.print_exception(
+        exc_type, exc_value, exc_traceback, file=sys.stderr
+    )
+
     # --- Observability ---
     # Bridge legacy APPLICATION_INSIGHTS_CONNECTION_STRING (underscore form,
     # used by docker-compose .env) to the canonical APPLICATIONINSIGHTS_CONNECTION_STRING
@@ -48,7 +54,8 @@ def main() -> None:
     # crashes `azure.ai.agentserver.core._tracing` at startup before /readiness
     # can return 200 (→ 424 session_not_ready). We work around this by reading
     # our explicit OTEL_CONNECTION_STRING (set in agent.yaml) and overwriting
-    # the broken platform value before the host server is constructed.
+    # the broken platform value before the host server is constructed. If the
+    # platform-injected value is well-formed, we leave it alone.
     _explicit_conn = os.environ.get("OTEL_CONNECTION_STRING") or os.environ.get(
         "APPLICATION_INSIGHTS_CONNECTION_STRING"
     )
@@ -87,6 +94,8 @@ def main() -> None:
     )
 
     # --- Foundry chat client + Agent (refreshed preview) ---
+    # Platform-injected env vars FOUNDRY_PROJECT_ENDPOINT / MODEL_DEPLOYMENT_NAME
+    # are preferred; fall back to legacy AZURE_* names for docker-compose local dev.
     project_endpoint = os.environ.get(
         "FOUNDRY_PROJECT_ENDPOINT"
     ) or os.environ["AZURE_AI_PROJECT_ENDPOINT"]
@@ -94,13 +103,8 @@ def main() -> None:
         "MODEL_DEPLOYMENT_NAME"
     ) or os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
 
-    # Credential resolution matches Azure-Samples foundry hosted-agent pattern:
-    # in a Foundry-hosted container the platform injects AZURE_CLIENT_ID for the
-    # per-agent instance identity, so we bind ManagedIdentityCredential to it
-    # directly (DefaultAzureCredential is too slow / unreliable on IMDS-style
-    # endpoints without a client_id hint and causes /readiness to time out).
-    # Local dev (docker-compose) falls back to DefaultAzureCredential which
-    # picks up `az login` / azd creds.
+    # Credential resolution matches Azure-Samples foundry hosted-agent pattern.
+    # See clinical/main.py for the full rationale.
     _client_id = os.environ.get("AZURE_CLIENT_ID")
     if _client_id:
         credential = ChainedTokenCredential(

@@ -17,6 +17,14 @@ agent-framework-foundry-hosting>=1.0.0a260424
 azure-ai-agentserver-core>=2.0.0b3
 # Managed identity / DefaultAzureCredential
 azure-identity>=1.15.0
+# Shared httpx client used by all in-container MCPStreamableHTTPTool instances
+# in the current preview dependency graph; pin to keep runtime resolution
+# aligned with the other hosted agents.
+httpx>=0.27.0
+# MCP runtime is not used directly by compliance, but the refreshed hosted
+# agent package set currently expects the same protocol stack as the other
+# agents during startup/import. Pin explicitly to avoid preview drift.
+mcp>=1.0.0
 # Environment variable loading
 python-dotenv>=1.0.0
 # Azure Monitor OpenTelemetry (optional — remove if not using App Insights)
